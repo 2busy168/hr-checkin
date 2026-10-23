@@ -1,0 +1,552 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0f1012">
+<title>ลงเวลาพนักงาน</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+<style>
+:root{
+  --bg:#0f1012;--card:#18191c;--card2:#1f2125;--line:#2a2d32;--text:#f3f2ee;--mute:#8d929a;
+  --amber:#f5b700;--green:#16a34a;--green2:#22c55e;--orange:#ea580c;--red:#ef4444;--blue:#60a5fa;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html{color-scheme:dark}
+body{background:var(--bg);color:var(--text);font-family:'IBM Plex Sans Thai',system-ui,sans-serif;font-size:16px;line-height:1.5;min-height:100vh}
+[hidden]{display:none!important}
+.mono{font-family:'JetBrains Mono',ui-monospace,monospace}
+.muted{color:var(--mute)}
+.small{font-size:13px}
+.center{text-align:center}
+.hazard{height:6px;background:repeating-linear-gradient(-45deg,var(--amber) 0 10px,#111 10px 20px);border-radius:3px}
+
+/* boot */
+.boot{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:24px;text-align:center;background:var(--bg);z-index:5}
+.spinner{width:40px;height:40px;border:4px solid var(--line);border-top-color:var(--amber);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* register */
+.reg{max-width:420px;margin:0 auto;padding:48px 20px}
+.reg h1{font-size:26px;margin:24px 0 6px}
+.reg p{margin-bottom:24px}
+
+/* form */
+label.lbl{display:block;font-size:14px;color:var(--mute);margin:14px 0 6px}
+input,textarea,select{width:100%;background:var(--card2);border:1px solid var(--line);color:var(--text);border-radius:12px;padding:13px 14px;font:inherit;font-size:17px;outline:none}
+input:focus,textarea:focus,select:focus{border-color:var(--amber)}
+textarea{resize:none}
+.btn{display:block;width:100%;border:0;border-radius:14px;padding:15px;font:inherit;font-size:17px;font-weight:700;background:var(--amber);color:#111;margin-top:18px;cursor:pointer}
+.btn:disabled{opacity:.55}
+.btn.ghost{background:transparent;border:1px solid var(--line);color:var(--text)}
+
+/* app */
+.top{display:flex;align-items:center;gap:12px;padding:16px 16px 12px;position:sticky;top:0;background:rgba(15,16,18,.94);backdrop-filter:blur(8px);z-index:2;border-bottom:1px solid var(--line)}
+.top img{width:42px;height:42px;border-radius:50%;background:var(--card2);object-fit:cover}
+.hname{font-weight:700;font-size:17px}
+main{padding:16px 16px calc(96px + env(safe-area-inset-bottom));max-width:520px;margin:0 auto}
+h2{font-size:20px;margin:4px 0 12px}
+h3{font-size:16px;margin:24px 0 10px;color:var(--mute);font-weight:600}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px}
+
+/* clock tab */
+.hero{text-align:center;padding:12px 0 18px}
+.clock{font-size:56px;font-weight:700;letter-spacing:-1px;line-height:1.1;margin:6px 0 14px}
+.today{display:grid;grid-template-columns:1fr 1fr;gap:0;padding:0;overflow:hidden}
+.today .cell{padding:16px;text-align:center}
+.today .cell+.cell{border-left:1px solid var(--line)}
+.today .cap{font-size:13px;color:var(--mute)}
+.today .big{font-size:30px;font-weight:700}
+.big.in{color:var(--green2)}.big.out{color:#fb923c}
+.where{margin:10px 0 0;font-size:14px}
+.btn-main{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;height:76px;border:0;border-radius:20px;font:inherit;font-size:22px;font-weight:700;color:#fff;margin-top:20px;cursor:pointer;transition:transform .1s}
+.btn-main:active{transform:scale(.98)}
+.btn-main.in{background:var(--green);box-shadow:0 8px 24px rgba(22,163,74,.28)}
+.btn-main.out{background:var(--orange);box-shadow:0 8px 24px rgba(234,88,12,.28)}
+.btn-main.again{background:var(--card2);color:var(--text);border:1px solid var(--line);font-size:17px;height:56px}
+.btn-main:disabled{opacity:.7}
+.hint{text-align:center;font-size:13px;color:var(--mute);margin-top:12px}
+.banner{background:rgba(96,165,250,.12);border:1px solid rgba(96,165,250,.35);color:#bfdbfe;border-radius:12px;padding:10px 14px;margin-top:14px;font-size:14px;text-align:center}
+
+/* chips */
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{border:1px solid var(--line);background:var(--card2);color:var(--text);border-radius:999px;padding:9px 16px;font:inherit;font-size:15px;cursor:pointer}
+.chip.on{background:var(--amber);border-color:var(--amber);color:#111;font-weight:700}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.check{display:flex;align-items:center;gap:10px;margin-top:14px;font-size:15px}
+.check input{width:22px;height:22px;accent-color:var(--amber)}
+
+/* lists */
+.item{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px 14px;border-bottom:1px solid var(--line)}
+.item:last-child{border-bottom:0}
+.list{padding:0;overflow:hidden}
+.item .t{font-weight:600}
+.item .s{font-size:13px;color:var(--mute)}
+.times{font-family:'JetBrains Mono',monospace;font-size:15px;text-align:right;white-space:nowrap}
+.badge{font-size:12px;font-weight:700;border-radius:999px;padding:3px 10px;white-space:nowrap}
+.b-wait{background:rgba(245,183,0,.15);color:var(--amber)}
+.b-ok{background:rgba(34,197,94,.15);color:var(--green2)}
+.b-no{background:rgba(239,68,68,.15);color:var(--red)}
+.empty{padding:22px;text-align:center;color:var(--mute);font-size:14px}
+.monthnav{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.monthnav button{background:var(--card2);border:1px solid var(--line);color:var(--text);width:44px;height:44px;border-radius:12px;font-size:20px;cursor:pointer}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+.stat{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 14px}
+.stat b{font-family:'JetBrains Mono',monospace;font-size:24px;display:block}
+
+/* slip */
+.slip{margin-bottom:12px;cursor:pointer}
+.slip .head{display:flex;justify-content:space-between;align-items:center}
+.slip .net{font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:700;color:var(--green2)}
+.slip .detail{margin-top:12px;border-top:1px dashed var(--line);padding-top:10px}
+.slip .line{display:flex;justify-content:space-between;font-size:14px;padding:3px 0}
+.slip .line .neg{color:var(--red)}
+
+/* nav */
+.nav{position:fixed;left:0;right:0;bottom:0;display:flex;background:rgba(20,21,24,.97);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom);z-index:3}
+.nav button{flex:1;background:none;border:0;color:var(--mute);font:inherit;font-size:12px;padding:9px 0 10px;display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer}
+.nav button svg{width:24px;height:24px}
+.nav button.on{color:var(--amber)}
+
+/* toast */
+.toast{position:fixed;left:16px;right:16px;bottom:calc(92px + env(safe-area-inset-bottom));background:#2a2d32;color:var(--text);padding:14px 16px;border-radius:14px;font-size:15px;transform:translateY(20px);opacity:0;pointer-events:none;transition:.25s;z-index:10;text-align:center;max-width:488px;margin:0 auto}
+.toast.show{transform:none;opacity:1}
+.toast.ok{background:#14532d;color:#dcfce7}
+.toast.err{background:#7f1d1d;color:#fee2e2}
+</style>
+</head>
+<body>
+
+<div id="boot" class="boot">
+  <div class="spinner" id="bootSpin"></div>
+  <p id="bootMsg">กำลังเปิด...</p>
+  <button id="bootRetry" class="btn ghost" style="max-width:220px" hidden>ลองใหม่</button>
+</div>
+
+<!-- ผูกบัญชีครั้งแรก -->
+<div id="reg" hidden>
+  <div class="reg">
+    <div class="hazard"></div>
+    <h1>ผูกบัญชีพนักงาน</h1>
+    <p class="muted">ทำครั้งเดียว ใส่รหัสพนักงานและ PIN ที่ได้จากเจ้าของร้าน</p>
+    <label class="lbl" for="regEmp">รหัสพนักงาน</label>
+    <input id="regEmp" autocomplete="off" placeholder="เช่น 5">
+    <label class="lbl" for="regPin">PIN</label>
+    <input id="regPin" class="mono" inputmode="numeric" maxlength="6" autocomplete="off" placeholder="••••">
+    <button id="btnReg" class="btn">ยืนยัน</button>
+  </div>
+</div>
+
+<div id="app" hidden>
+  <header class="top">
+    <img id="avatar" alt="">
+    <div><div id="hName" class="hname"></div><div id="hSub" class="muted small"></div></div>
+  </header>
+
+  <main>
+    <!-- ลงเวลา -->
+    <section id="tab-clock">
+      <div class="hero">
+        <div id="dateTh" class="muted"></div>
+        <div id="clock" class="clock mono">--:--</div>
+        <div class="hazard"></div>
+      </div>
+      <div class="card today">
+        <div class="cell"><div class="cap">เข้างาน</div><div id="tIn" class="big in mono">--:--</div></div>
+        <div class="cell"><div class="cap">ออกงาน</div><div id="tOut" class="big out mono">--:--</div></div>
+      </div>
+      <p id="tWhere" class="where center muted"></p>
+      <div id="leaveBanner" class="banner" hidden></div>
+      <button id="btnMain" class="btn-main in">เช็คอินเข้างาน</button>
+      <p class="hint">📍 ระบบจะเช็คตำแหน่ง GPS ว่าอยู่ที่ร้าน</p>
+    </section>
+
+    <!-- ขอลา -->
+    <section id="tab-leave" hidden>
+      <h2>ขอลา</h2>
+      <div class="card">
+        <label class="lbl" style="margin-top:0">ประเภท</label>
+        <div class="chips" id="lvType">
+          <button class="chip on" data-v="ลาป่วย">ลาป่วย</button>
+          <button class="chip" data-v="ลากิจ">ลากิจ</button>
+          <button class="chip" data-v="ลาพักร้อน">ลาพักร้อน</button>
+          <button class="chip" data-v="อื่นๆ">อื่นๆ</button>
+        </div>
+        <div class="row2">
+          <div><label class="lbl" for="lvStart">ตั้งแต่</label><input type="date" id="lvStart"></div>
+          <div><label class="lbl" for="lvEnd">ถึง</label><input type="date" id="lvEnd"></div>
+        </div>
+        <label class="check"><input type="checkbox" id="lvHalf"> ลาครึ่งวัน</label>
+        <label class="lbl" for="lvReason">เหตุผล</label>
+        <textarea id="lvReason" rows="2" maxlength="200" placeholder="ไม่บังคับ"></textarea>
+        <button id="btnLeave" class="btn">ส่งใบลา</button>
+      </div>
+      <h3>ใบลาของฉัน</h3>
+      <div id="lvList" class="card list"><div class="empty">กำลังโหลด...</div></div>
+    </section>
+
+    <!-- ประวัติ -->
+    <section id="tab-history" hidden>
+      <div class="monthnav">
+        <button id="mPrev" aria-label="เดือนก่อน">‹</button>
+        <h2 id="mLabel" style="margin:0"></h2>
+        <button id="mNext" aria-label="เดือนถัดไป">›</button>
+      </div>
+      <div class="stats">
+        <div class="stat"><span class="muted small">วันทำงาน</span><b id="sDays">0</b></div>
+        <div class="stat"><span class="muted small">ชั่วโมงรวม</span><b id="sHours">0</b></div>
+      </div>
+      <div id="hList" class="card list"><div class="empty">กำลังโหลด...</div></div>
+    </section>
+
+    <!-- สลิป -->
+    <section id="tab-slip" hidden>
+      <h2>สลิปเงินเดือน</h2>
+      <div id="slipList"><div class="card empty">กำลังโหลด...</div></div>
+    </section>
+
+    <!-- เจ้าของร้าน -->
+    <section id="tab-admin" hidden>
+      <div class="monthnav">
+        <h2 style="margin:0">วันนี้</h2>
+        <button id="aRefresh" aria-label="รีเฟรช">↻</button>
+      </div>
+      <div id="aSummary" class="muted small" style="margin-bottom:10px"></div>
+      <div id="aList" class="card list"><div class="empty">กำลังโหลด...</div></div>
+
+      <h3>ตั้งพิกัดสาขา</h3>
+      <div class="card">
+        <p class="muted small">ยืนอยู่ที่ร้าน แล้วกดปุ่มด้านล่าง ระบบจะบันทึกตำแหน่งตอนนี้เป็นพิกัดของสาขา</p>
+        <label class="lbl" for="aBranch">สาขา</label>
+        <select id="aBranch"></select>
+        <button id="btnLoc" class="btn">📍 ใช้ตำแหน่งตอนนี้</button>
+        <div id="aBrStatus" class="small muted" style="margin-top:12px"></div>
+      </div>
+    </section>
+  </main>
+
+  <nav class="nav">
+    <button data-tab="clock" class="on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>ลงเวลา</button>
+    <button data-tab="leave"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/></svg>ขอลา</button>
+    <button data-tab="history"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h10"/></svg>ประวัติ</button>
+    <button data-tab="slip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/></svg>สลิป</button>
+    <button data-tab="admin" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 21h18M5 21V10l7-5 7 5v11M10 21v-6h4v6"/></svg>จัดการ</button>
+  </nav>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script>
+/* ===== ตั้งค่า (แก้ 2 บรรทัดนี้) ===== */
+const LIFF_ID = '2012161797-Jiv5oPew';
+const API_URL = 'https://script.google.com/macros/s/AKfycbyRIfIe18sMXfkaO53TDZ2gETzzwH-JVkehJoORAuOQqMa3WMYJoIpbbj5gNF1kQvWN/exec';
+/* =================================== */
+
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const pad = n => String(n).padStart(2, '0');
+const ymd = d => d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+const thDate = s => new Date(s + 'T00:00:00').toLocaleDateString('th-TH', { weekday: 'short', day: 'numeric', month: 'short' });
+const thMonth = ym => new Date(ym + '-01T00:00:00').toLocaleDateString('th-TH', { month: 'long', year: 'numeric' });
+const money = n => Number(n || 0).toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const rangeTh = (a, b) => a === b ? thDate(a) : thDate(a) + ' – ' + thDate(b);
+
+let ME = null, leaveType = 'ลาป่วย', histMonth = ymd(new Date()).slice(0, 7), loaded = {};
+
+async function api(action, data = {}) {
+  const idToken = liff.getIDToken();
+  const res = await fetch(API_URL, { method: 'POST', body: JSON.stringify(Object.assign({ action, idToken }, data)) });
+  const j = await res.json();
+  if (!j.ok) throw new Error(j.error || 'เกิดข้อผิดพลาด');
+  return j.data;
+}
+
+function toast(msg, type = '') {
+  const t = $('#toast');
+  t.textContent = msg;
+  t.className = 'toast show ' + type;
+  clearTimeout(t._h);
+  t._h = setTimeout(() => (t.className = 'toast'), 4000);
+}
+
+function boot(msg, retry) {
+  $('#boot').hidden = false;
+  $('#bootMsg').textContent = msg;
+  $('#bootSpin').hidden = !!retry;
+  $('#bootRetry').hidden = !retry;
+}
+
+function fail(e) {
+  const m = e && e.message ? e.message : String(e);
+  if (m === 'AUTH') return boot('เซสชันหมดอายุ กรุณาปิดหน้านี้แล้วเปิดใหม่', true);
+  toast(m, 'err');
+}
+
+function getPos() {
+  return new Promise((resolve, reject) => {
+    if (!navigator.geolocation) return reject(new Error('เครื่องนี้ไม่รองรับ GPS'));
+    navigator.geolocation.getCurrentPosition(
+      p => resolve(p.coords),
+      err => reject(new Error(
+        err.code === 1 ? 'กรุณาอนุญาตให้ LINE เข้าถึงตำแหน่ง (Location) แล้วลองใหม่'
+        : err.code === 3 ? 'หาตำแหน่งนานเกินไป ลองใหม่อีกครั้ง'
+        : 'หาตำแหน่งไม่ได้ เปิด GPS แล้วลองใหม่')),
+      { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 });
+  });
+}
+
+/* ---------- start ---------- */
+async function main() {
+  if (LIFF_ID.startsWith('วาง') || API_URL.startsWith('วาง')) return boot('ยังไม่ได้ตั้งค่า LIFF_ID / API_URL ในไฟล์ index.html', false);
+  try { await liff.init({ liffId: LIFF_ID }); }
+  catch (e) { return boot('เชื่อมต่อ LINE ไม่สำเร็จ: ' + e.message, true); }
+  if (!liff.isLoggedIn()) return liff.login({ redirectUri: location.href });
+
+  try { ME = await api('me'); }
+  catch (e) { return e.message === 'AUTH' ? boot('เซสชันหมดอายุ กรุณาปิดหน้านี้แล้วเปิดใหม่', true) : boot(e.message, true); }
+
+  try { const p = await liff.getProfile(); if (p.pictureUrl) $('#avatar').src = p.pictureUrl; } catch (_) {}
+  render();
+}
+
+function render() {
+  $('#boot').hidden = true;
+  if (!ME.registered) { $('#reg').hidden = false; $('#app').hidden = true; return; }
+  $('#reg').hidden = true;
+  $('#app').hidden = false;
+  $('#hName').textContent = ME.name;
+  $('#hSub').textContent = 'รหัส ' + ME.empId + (ME.role === 'admin' ? ' · เจ้าของร้าน' : '');
+  document.querySelector('.nav [data-tab="admin"]').hidden = ME.role !== 'admin';
+  renderToday();
+  const want = new URLSearchParams(location.search).get('tab');
+  const ok = ['clock', 'leave', 'history', 'slip'].includes(want) || (want === 'admin' && ME.role === 'admin');
+  go(ok ? want : 'clock');
+}
+
+/* ---------- nav ---------- */
+function go(tab) {
+  document.querySelectorAll('main > section').forEach(s => (s.hidden = s.id !== 'tab-' + tab));
+  document.querySelectorAll('.nav button').forEach(b => b.classList.toggle('on', b.dataset.tab === tab));
+  window.scrollTo(0, 0);
+  if (tab === 'leave' && !loaded.leave) loadLeaves();
+  if (tab === 'history') loadHistory();
+  if (tab === 'slip' && !loaded.slip) loadSlips();
+  if (tab === 'admin') loadAdmin();
+}
+document.querySelectorAll('.nav button').forEach(b => b.addEventListener('click', () => go(b.dataset.tab)));
+
+/* ---------- clock ---------- */
+function tick() {
+  const d = new Date();
+  $('#clock').textContent = pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds());
+  $('#dateTh').textContent = d.toLocaleDateString('th-TH', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+}
+setInterval(tick, 1000); tick();
+
+function renderToday() {
+  const t = ME.today || {};
+  $('#tIn').textContent = t.in || '--:--';
+  $('#tOut').textContent = t.out || '--:--';
+  $('#tWhere').textContent = t.branch ? '📍 ' + t.branch : '';
+  const lb = $('#leaveBanner');
+  lb.hidden = !ME.leaveToday;
+  lb.textContent = ME.leaveToday ? 'วันนี้คุณ' + ME.leaveToday + ' (อนุมัติแล้ว)' : '';
+  const b = $('#btnMain');
+  b.disabled = false;
+  if (!t.in) { b.className = 'btn-main in'; b.textContent = 'เช็คอินเข้างาน'; }
+  else if (!t.out) { b.className = 'btn-main out'; b.textContent = 'เช็คเอาท์ออกงาน'; }
+  else { b.className = 'btn-main again'; b.textContent = 'แก้เวลาออกงานเป็นตอนนี้'; }
+}
+
+$('#btnMain').addEventListener('click', async () => {
+  const t = ME.today || {};
+  const isOut = !!t.in;
+  if (t.in && t.out && !confirm('บันทึกเวลาออกไว้แล้ว (' + t.out + ') ต้องการเปลี่ยนเป็นเวลาตอนนี้ไหม?')) return;
+  const b = $('#btnMain');
+  b.disabled = true;
+  b.textContent = 'กำลังหาตำแหน่ง...';
+  try {
+    const c = await getPos();
+    b.textContent = 'กำลังบันทึก...';
+    const r = await api(isOut ? 'checkout' : 'checkin', { lat: c.latitude, lng: c.longitude, acc: c.accuracy });
+    ME.today = r.today;
+    toast((isOut ? 'เช็คเอาท์' : 'เช็คอิน') + ' ' + r.time + ' น. · ' + r.branch, 'ok');
+    if (navigator.vibrate) navigator.vibrate(60);
+    loaded.history = false;
+  } catch (e) { fail(e); }
+  renderToday();
+});
+
+/* ---------- register ---------- */
+$('#btnReg').addEventListener('click', async () => {
+  const b = $('#btnReg');
+  b.disabled = true; b.textContent = 'กำลังตรวจสอบ...';
+  try {
+    ME = await api('register', { empId: $('#regEmp').value, pin: $('#regPin').value });
+    toast('ผูกบัญชีเรียบร้อย ยินดีต้อนรับ ' + ME.name, 'ok');
+    render();
+  } catch (e) { fail(e); }
+  b.disabled = false; b.textContent = 'ยืนยัน';
+});
+
+/* ---------- leave ---------- */
+(function initLeave() {
+  const today = ymd(new Date());
+  $('#lvStart').value = today; $('#lvEnd').value = today;
+  $('#lvType').addEventListener('click', e => {
+    const c = e.target.closest('.chip'); if (!c) return;
+    leaveType = c.dataset.v;
+    document.querySelectorAll('#lvType .chip').forEach(x => x.classList.toggle('on', x === c));
+  });
+  $('#lvStart').addEventListener('change', () => {
+    if ($('#lvHalf').checked || $('#lvEnd').value < $('#lvStart').value) $('#lvEnd').value = $('#lvStart').value;
+  });
+  $('#lvHalf').addEventListener('change', () => {
+    $('#lvEnd').disabled = $('#lvHalf').checked;
+    if ($('#lvHalf').checked) $('#lvEnd').value = $('#lvStart').value;
+  });
+})();
+
+$('#btnLeave').addEventListener('click', async () => {
+  const b = $('#btnLeave');
+  b.disabled = true; b.textContent = 'กำลังส่ง...';
+  try {
+    const r = await api('leave', {
+      type: leaveType, start: $('#lvStart').value, end: $('#lvEnd').value,
+      half: $('#lvHalf').checked, reason: $('#lvReason').value
+    });
+    toast('ส่งใบลาแล้ว (' + r.days + ' วัน) รอเจ้าของร้านอนุมัติ', 'ok');
+    $('#lvReason').value = '';
+    loadLeaves();
+  } catch (e) { fail(e); }
+  b.disabled = false; b.textContent = 'ส่งใบลา';
+});
+
+function badge(st) {
+  const cls = st === 'อนุมัติ' ? 'b-ok' : st === 'ไม่อนุมัติ' ? 'b-no' : 'b-wait';
+  return '<span class="badge ' + cls + '">' + esc(st) + '</span>';
+}
+
+async function loadLeaves() {
+  const box = $('#lvList');
+  box.innerHTML = '<div class="empty">กำลังโหลด...</div>';
+  try {
+    const r = await api('history', { month: ymd(new Date()).slice(0, 7) });
+    loaded.leave = true;
+    box.innerHTML = r.leaves.length ? r.leaves.map(l =>
+      '<div class="item"><div><div class="t">' + esc(l.type) + ' · ' + esc(l.days) + ' วัน</div>' +
+      '<div class="s">' + esc(rangeTh(l.start, l.end)) + (l.reason ? ' · ' + esc(l.reason) : '') + '</div></div>' +
+      badge(l.status) + '</div>').join('')
+      : '<div class="empty">ยังไม่มีใบลา</div>';
+  } catch (e) { box.innerHTML = '<div class="empty">โหลดไม่สำเร็จ</div>'; fail(e); }
+}
+
+/* ---------- history ---------- */
+function shiftMonth(delta) {
+  const [y, m] = histMonth.split('-').map(Number);
+  const d = new Date(y, m - 1 + delta, 1);
+  histMonth = d.getFullYear() + '-' + pad(d.getMonth() + 1);
+  loadHistory();
+}
+$('#mPrev').addEventListener('click', () => shiftMonth(-1));
+$('#mNext').addEventListener('click', () => shiftMonth(1));
+
+function mins(a, b) {
+  if (!a || !b) return 0;
+  const [h1, m1] = a.split(':').map(Number), [h2, m2] = b.split(':').map(Number);
+  return Math.max(0, (h2 * 60 + m2) - (h1 * 60 + m1));
+}
+
+async function loadHistory() {
+  $('#mLabel').textContent = thMonth(histMonth);
+  $('#mNext').disabled = histMonth >= ymd(new Date()).slice(0, 7);
+  const box = $('#hList');
+  box.innerHTML = '<div class="empty">กำลังโหลด...</div>';
+  try {
+    const want = histMonth;
+    const r = await api('history', { month: want });
+    if (want !== histMonth) return;
+    const total = r.days.reduce((s, d) => s + mins(d.in, d.out), 0);
+    $('#sDays').textContent = r.days.filter(d => d.in).length;
+    $('#sHours').textContent = (total / 60).toFixed(1);
+    box.innerHTML = r.days.length ? r.days.map(d =>
+      '<div class="item"><div><div class="t">' + esc(thDate(d.date)) + '</div><div class="s">' + esc(d.branch) + '</div></div>' +
+      '<div class="times">' + esc(d.in || '--:--') + ' → ' + esc(d.out || '--:--') + '</div></div>').join('')
+      : '<div class="empty">ไม่มีข้อมูลเดือนนี้</div>';
+  } catch (e) { box.innerHTML = '<div class="empty">โหลดไม่สำเร็จ</div>'; fail(e); }
+}
+
+/* ---------- slips ---------- */
+async function loadSlips() {
+  const box = $('#slipList');
+  box.innerHTML = '<div class="card empty">กำลังโหลด...</div>';
+  try {
+    const list = await api('slips');
+    loaded.slip = true;
+    if (!list.length) { box.innerHTML = '<div class="card empty">ยังไม่มีสลิป</div>'; return; }
+    box.innerHTML = list.map((s, i) =>
+      '<div class="card slip" data-i="' + i + '">' +
+        '<div class="head"><div><div class="t" style="font-weight:700">' + esc(thMonth(s.period)) + '</div>' +
+        '<div class="s muted small">แตะเพื่อดูรายละเอียด</div></div><div class="net">' + money(s.net) + '</div></div>' +
+        '<div class="detail" hidden>' +
+          s.items.map(it => '<div class="line"><span>' + esc(it.n) + '</span><span class="mono' + (it.a < 0 ? ' neg' : '') + '">' +
+            (it.a < 0 ? '-' : '') + money(Math.abs(it.a)) + '</span></div>').join('') +
+          '<div class="line" style="margin-top:6px"><span class="muted">รายได้รวม</span><span class="mono">' + money(s.earn) + '</span></div>' +
+          '<div class="line"><span class="muted">รายการหักรวม</span><span class="mono neg">-' + money(s.deduct) + '</span></div>' +
+        '</div></div>').join('');
+    box.querySelectorAll('.slip').forEach(el => el.addEventListener('click', () => {
+      const d = el.querySelector('.detail'); d.hidden = !d.hidden;
+    }));
+  } catch (e) { box.innerHTML = '<div class="card empty">โหลดไม่สำเร็จ</div>'; fail(e); }
+}
+
+/* ---------- admin ---------- */
+function renderBranches() {
+  const sel = $('#aBranch'), cur = sel.value;
+  sel.innerHTML = ME.branches.map(b => '<option value="' + esc(b.id) + '">' + esc(b.name) + '</option>').join('');
+  if (cur) sel.value = cur;
+  $('#aBrStatus').innerHTML = ME.branches.map(b =>
+    (b.hasLoc ? '✅ ' : '⚠️ ') + esc(b.name) + (b.hasLoc ? ' · รัศมี ' + esc(b.radius) + ' ม.' : ' · ยังไม่ได้ตั้งพิกัด')).join('<br>');
+}
+
+async function loadAdmin() {
+  renderBranches();
+  const box = $('#aList');
+  box.innerHTML = '<div class="empty">กำลังโหลด...</div>';
+  try {
+    const list = await api('adminToday');
+    const present = list.filter(x => x.in).length;
+    $('#aSummary').textContent = 'มาทำงาน ' + present + '/' + list.length + ' คน · ' + new Date().toLocaleDateString('th-TH', { day: 'numeric', month: 'short' });
+    box.innerHTML = list.length ? list.map(x => {
+      let st;
+      if (x.in) st = '<div class="times">' + esc(x.in) + ' → ' + esc(x.out || '--:--') + '</div>';
+      else if (x.leave) st = '<span class="badge b-ok">' + esc(x.leave) + '</span>';
+      else st = '<span class="badge b-no">ยังไม่มา</span>';
+      return '<div class="item"><div><div class="t">' + esc(x.name) + '</div><div class="s">' + esc(x.branch || 'รหัส ' + x.empId) + '</div></div>' + st + '</div>';
+    }).join('') : '<div class="empty">ยังไม่มีพนักงาน</div>';
+  } catch (e) { box.innerHTML = '<div class="empty">โหลดไม่สำเร็จ</div>'; fail(e); }
+}
+$('#aRefresh').addEventListener('click', loadAdmin);
+
+$('#btnLoc').addEventListener('click', async () => {
+  const sel = $('#aBranch'), name = sel.options[sel.selectedIndex]?.text || '';
+  if (!confirm('บันทึกตำแหน่งตอนนี้เป็นพิกัดของ "' + name + '" ?')) return;
+  const b = $('#btnLoc');
+  b.disabled = true; b.textContent = 'กำลังหาตำแหน่ง...';
+  try {
+    const c = await getPos();
+    ME.branches = await api('setBranchLoc', { branchId: sel.value, lat: c.latitude, lng: c.longitude, acc: c.accuracy });
+    renderBranches();
+    toast('บันทึกพิกัด ' + name + ' แล้ว (±' + Math.round(c.accuracy) + ' ม.)', 'ok');
+  } catch (e) { fail(e); }
+  b.disabled = false; b.textContent = '📍 ใช้ตำแหน่งตอนนี้';
+});
+
+$('#bootRetry').addEventListener('click', () => location.reload());
+main();
+</script>
+</body>
+</html>
