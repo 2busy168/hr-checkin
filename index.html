@@ -304,6 +304,17 @@ async function main() {
   try { await liff.init({ liffId: LIFF_ID }); }
   catch (e) { return boot('เชื่อมต่อ LINE ไม่สำเร็จ: ' + e.message, true); }
   if (!liff.isLoggedIn()) return liff.login({ redirectUri: location.href });
+  if (!liff.getIDToken()) {
+    // สิทธิ์เก่าที่ไม่มี openid ค้างอยู่ — ล็อกอินใหม่ 1 ครั้ง
+    let tried = false;
+    try { tried = sessionStorage.getItem('relogin') === '1'; sessionStorage.setItem('relogin', '1'); } catch (_) {}
+    if (!tried) {
+      liff.logout();
+      if (liff.isInClient()) { location.reload(); return; }
+      return liff.login({ redirectUri: location.href });
+    }
+  }
+  try { sessionStorage.removeItem('relogin'); } catch (_) {}
 
   try { ME = await api('me'); }
   catch (e) { return boot('เข้าระบบไม่สำเร็จ: ' + e.message, true); }
