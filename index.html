@@ -306,7 +306,7 @@ async function main() {
   if (!liff.isLoggedIn()) return liff.login({ redirectUri: location.href });
 
   try { ME = await api('me'); }
-  catch (e) { return e.message === 'AUTH' ? boot('เซสชันหมดอายุ กรุณาปิดหน้านี้แล้วเปิดใหม่', true) : boot(e.message, true); }
+  catch (e) { return boot('เข้าระบบไม่สำเร็จ: ' + e.message, true); }
 
   try { const p = await liff.getProfile(); if (p.pictureUrl) $('#avatar').src = p.pictureUrl; } catch (_) {}
   render();
