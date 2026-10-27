@@ -161,7 +161,8 @@ h3{font-size:16px;margin:24px 0 10px;color:var(--mute);font-weight:600}
       <p id="tWhere" class="where center muted"></p>
       <div id="leaveBanner" class="banner" hidden></div>
       <button id="btnMain" class="btn-main in">เช็คอินเข้างาน</button>
-      <p class="hint">📍 ระบบจะเช็คตำแหน่ง GPS ว่าอยู่ที่ร้าน</p>
+      <input type="file" id="cam" accept="image/*" capture="user" style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none" tabindex="-1" aria-hidden="true">
+      <p class="hint" id="clockHint">📷 ถ่ายรูปหน้า + 📍 เช็คตำแหน่งว่าอยู่ในร้าน</p>
     </section>
 
     <!-- ขอลา -->
@@ -370,26 +371,78 @@ function renderToday() {
   if (!t.in) { b.className = 'btn-main in'; b.textContent = 'เช็คอินเข้างาน'; }
   else if (!t.out) { b.className = 'btn-main out'; b.textContent = 'เช็คเอาท์ออกงาน'; }
   else { b.className = 'btn-main again'; b.textContent = 'แก้เวลาออกงานเป็นตอนนี้'; }
+  $('#clockHint').textContent = (ME.requirePhoto ? '📷 ถ่ายรูปหน้า + ' : '') + '📍 เช็คตำแหน่งว่าอยู่ในร้าน';
 }
 
-$('#btnMain').addEventListener('click', async () => {
+let clockBusy = false;
+
+// กดปุ่ม → เปิดกล้องหน้า (ต้องเรียกในจังหวะที่ผู้ใช้กดทันที ไม่งั้นมือถือบล็อก)
+$('#btnMain').addEventListener('click', () => {
+  if (clockBusy) return;
+  if (ME.requirePhoto) { const c = $('#cam'); c.value = ''; c.click(); return; }
+  doClock(null);
+});
+$('#cam').addEventListener('change', e => {
+  const f = e.target.files && e.target.files[0];
+  if (f) doClock(f);
+});
+
+async function doClock(file) {
   const t = ME.today || {};
   const isOut = !!t.in;
-  if (t.in && t.out && !confirm('บันทึกเวลาออกไว้แล้ว (' + t.out + ') ต้องการเปลี่ยนเป็นเวลาตอนนี้ไหม?')) return;
   const b = $('#btnMain');
+  clockBusy = true;
   b.disabled = true;
-  b.textContent = 'กำลังหาตำแหน่ง...';
   try {
+    let photo = '';
+    if (file) {
+      b.textContent = 'กำลังเตรียมรูป...';
+      photo = await makePhoto(file, isOut ? 'ออกงาน' : 'เข้างาน');
+    }
+    b.textContent = 'กำลังหาตำแหน่ง...';
     const c = await getPos();
     b.textContent = 'กำลังบันทึก...';
-    const r = await api(isOut ? 'checkout' : 'checkin', { lat: c.latitude, lng: c.longitude, acc: c.accuracy });
+    const r = await api(isOut ? 'checkout' : 'checkin', { lat: c.latitude, lng: c.longitude, acc: c.accuracy, photo });
     ME.today = r.today;
     toast((isOut ? 'เช็คเอาท์' : 'เช็คอิน') + ' ' + r.time + ' น. · ' + r.branch, 'ok');
     if (navigator.vibrate) navigator.vibrate(60);
     loaded.history = false;
   } catch (e) { fail(e); }
+  finally { clockBusy = false; }
   renderToday();
-});
+}
+
+/** ย่อรูปให้เล็ก + ประทับเวลา/ชื่อบนรูป → dataURL (jpeg) */
+function makePhoto(file, label) {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      try {
+        const max = 720, s = Math.min(1, max / Math.max(img.naturalWidth, img.naturalHeight));
+        const w = Math.round(img.naturalWidth * s), h = Math.round(img.naturalHeight * s);
+        const cv = document.createElement('canvas');
+        cv.width = w; cv.height = h;
+        const g = cv.getContext('2d');
+        g.drawImage(img, 0, 0, w, h);
+        const now = new Date(), bar = Math.max(70, Math.round(h * 0.15)), fs = Math.round(bar * 0.32);
+        g.fillStyle = 'rgba(0,0,0,.62)'; g.fillRect(0, h - bar, w, bar);
+        g.fillStyle = '#F5B700'; g.fillRect(0, h - bar, 8, bar);
+        g.textBaseline = 'middle';
+        g.fillStyle = '#ffffff';
+        g.font = '700 ' + fs + 'px "IBM Plex Sans Thai", system-ui, sans-serif';
+        g.fillText(label + '  ' + pad(now.getHours()) + ':' + pad(now.getMinutes()) + ':' + pad(now.getSeconds()), 22, h - bar * 0.66);
+        g.fillStyle = '#d4d4d4';
+        g.font = '500 ' + Math.round(fs * 0.7) + 'px "IBM Plex Sans Thai", system-ui, sans-serif';
+        g.fillText(now.toLocaleDateString('th-TH', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }) + '  ·  ' + (ME.name || ''), 22, h - bar * 0.27);
+        URL.revokeObjectURL(url);
+        resolve(cv.toDataURL('image/jpeg', 0.72));
+      } catch (e) { reject(new Error('เตรียมรูปไม่สำเร็จ ลองถ่ายใหม่')); }
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('อ่านรูปไม่ได้ ลองถ่ายใหม่')); };
+    img.src = url;
+  });
+}
 
 /* ---------- register ---------- */
 $('#btnReg').addEventListener('click', async () => {
@@ -533,7 +586,8 @@ async function loadAdmin() {
     $('#aSummary').textContent = 'มาทำงาน ' + present + '/' + list.length + ' คน · ' + new Date().toLocaleDateString('th-TH', { day: 'numeric', month: 'short' });
     box.innerHTML = list.length ? list.map(x => {
       let st;
-      if (x.in) st = '<div class="times">' + esc(x.in) + ' → ' + esc(x.out || '--:--') + '</div>';
+      const ph = u => /^https:\/\/drive\.google\.com\//.test(u) ? ' <a href="' + esc(u) + '" target="_blank" rel="noopener" style="text-decoration:none">📷</a>' : '';
+      if (x.in) st = '<div class="times">' + esc(x.in) + ph(x.pin) + ' → ' + esc(x.out || '--:--') + ph(x.pout) + '</div>';
       else if (x.leave) st = '<span class="badge b-ok">' + esc(x.leave) + '</span>';
       else st = '<span class="badge b-no">ยังไม่มา</span>';
       return '<div class="item"><div><div class="t">' + esc(x.name) + '</div><div class="s">' + esc(x.branch || 'รหัส ' + x.empId) + '</div></div>' + st + '</div>';
